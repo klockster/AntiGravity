@@ -25,7 +25,7 @@ Views are initialized with a renderId (this is the id of the `<render>` tag you 
   To render simply call: `YourView.renderView()`. Note: If this is a callback you must bind 'YourView' to
   renderView in order to retain the correct context.
   Additionally there is the `<partial>` tag, also given an id and accessed through
-  `YourView.renderViewPartial(partialId, object)` where the object contains any attributes required by the partial (ie attributes inside double brackets). If you specify methods for your view you can call them inside double brackets, making partials very useful for repeating segments of HTML.
+  `YourView.renderViewPartial(partialId, object)` where the object contains any attributes required by the partial (ie attributes inside double brackets). If you specify methods for your view you can call them inside double curly braces, making partials very useful for repeating segments of HTML.
 #### Routes
 Routes match events from views to actions on specified controllers. An HTML element is given a route
 attribute in JSON parseable form, eg: `<p route='{"dblclick": ":id/select" path-id="{{ id }}"}'>`.  Your router will then attack
