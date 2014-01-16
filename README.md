@@ -35,3 +35,7 @@ attribute in JSON parseable form, eg: `<p route='{"dblclick": ":id/select" path-
   a params object and the event.  The params object is populated by looking at the values of all child
   elements with a name attribute specified, and the value of the event target if it has a name specified. Lastly the params object is given keys corresponding to items prefixed with colons in the route (id from the example above).  It seeks the value by looking for an attribute on the event target element called
   path-attributeName (path-id for example above).
+
+## Upcoming Changes
+* Methods moved from inside constructor functions to prototype.
+* Add convenience methods to toggle display for different blocks
