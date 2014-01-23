@@ -75,7 +75,7 @@ var NotesController = new AntiGravity.Controller({
 		v2.renderView();
 	},
 	filter: function(params, event){
-		NotesView.filter({notes: Note.pojos}, document.getElementById("search-input").value,document.getElementById("search").value);
+		NotesView.filter({notes: Note.pojos}, document.getElementById("search-input").value, document.getElementById("search").value);
 	},
 	updateNote: function(params, event){
 		if (params["title"] && params["body"]){

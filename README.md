@@ -39,3 +39,4 @@ attribute in JSON parseable form, eg: `<p route='{"dblclick": ":id/select" path-
 ## Upcoming Changes
 * Methods moved from inside constructor functions to prototype.
 * Add convenience methods to toggle display for different blocks
+* Get rid of all dependencies on jQuery
