@@ -1,21 +1,21 @@
 (function(root){
-	//A framework so light it floats!!
-	var AntiGravity = root.AntiGravity = (root.AntiGravity || {});
-	var Controller = AntiGravity.Controller = function Controller(object){
-		var k = Object.keys(object);
-		for (var i = 0; i < k.length; i++){
-			this[k[i]] = object[k[i]];
-		}
-	};
+  //A framework so light it floats!!
+  var AntiGravity = root.AntiGravity = (root.AntiGravity || {});
+  var Controller = AntiGravity.Controller = function Controller(object){
+    var k = Object.keys(object);
+    for (var i = 0; i < k.length; i++){
+      this[k[i]] = object[k[i]];
+    }
+  };
 
   var activeModels = AntiGravity.activeModels = [];
-	var Model = AntiGravity.Model = function Model(object){
+  var Model = AntiGravity.Model = function Model(object){
     this.pojos = [];//models
     this.updated = [];
-		var k = Object.keys(object);
-		for (var i = 0; i < k.length; i++){
-			this[k[i]] = object[k[i]];
-		}
+    var k = Object.keys(object);
+    for (var i = 0; i < k.length; i++){
+      this[k[i]] = object[k[i]];
+    }
     activeModels.push(this);
 
     this.findWhere = function(obj){
@@ -24,8 +24,8 @@
       }
     }
 
-		
-	};
+    
+  };
 
   Model.prototype.urlSubstitute = function(url, obj){
     var arr = path.match(/:(.*?)(\/|$)/g) || [];
@@ -135,15 +135,15 @@
     })
   };
 
-	var View = AntiGravity.View = function View(object){
-		var k = Object.keys(object);
-		for (var i = 0; i < k.length; i++){
-			this[k[i]] = object[k[i]];
-		}
+  var View = AntiGravity.View = function View(object){
+    var k = Object.keys(object);
+    for (var i = 0; i < k.length; i++){
+      this[k[i]] = object[k[i]];
+    }
 
     this.renderStyle = function(obj){}
 
-	};
+  };
 
   View.prototype.renderView = function(){
     var template = document.getElementById(this.renderId);
@@ -244,20 +244,20 @@
     this.renderView();
   }
 
-	var activeRouters = AntiGravity.activeRouters = [];
-	var Router = AntiGravity.Router = function Router(object){
-		activeRouters.push(this);
-		var object = object || {};
-		this.routes = {};// "path": "controller.action?"
-		var k = Object.keys(object);
-		for (var i = 0; i < k.length; i++){
-			this.routes[k[i]] = object[k[i]];
-		}
+  var activeRouters = AntiGravity.activeRouters = [];
+  var Router = AntiGravity.Router = function Router(object){
+    activeRouters.push(this);
+    var object = object || {};
+    this.routes = {};// "path": "controller.action?"
+    var k = Object.keys(object);
+    for (var i = 0; i < k.length; i++){
+      this.routes[k[i]] = object[k[i]];
+    }
 
-		this.updateRoutes();
-		//target.addEventListener('action', callback, false);
+    this.updateRoutes();
+    //target.addEventListener('action', callback, false);
 
-	};
+  };
 
   Router.prototype.parseAction = function(path, event){
     var arr = path.match(/:(.*?)(\/|$)/g) || [];
@@ -352,23 +352,23 @@
     }
   }
 
-	originalRenders = AntiGravity.originalRenders = {};
+  originalRenders = AntiGravity.originalRenders = {};
 
-	var renders = document.getElementsByTagName("render");
-	var partials = document.getElementsByTagName("partial");
-	for (var i = 0; i < renders.length; i++){
-		renders[i].style.display = "none";
-		AntiGravity.originalRenders[renders[i].getAttribute("id")] = renders[i].cloneNode(true);
-	}
-	for (var i = 0; i < partials.length; i++){
-		partials[i].style.display = "none";
-	}
+  var renders = document.getElementsByTagName("render");
+  var partials = document.getElementsByTagName("partial");
+  for (var i = 0; i < renders.length; i++){
+    renders[i].style.display = "none";
+    AntiGravity.originalRenders[renders[i].getAttribute("id")] = renders[i].cloneNode(true);
+  }
+  for (var i = 0; i < partials.length; i++){
+    partials[i].style.display = "none";
+  }
 
-	escapeHTML = AntiGravity.escapeHTML = function escapeHTML(string){
-		var pre = document.createElement('pre');
-		var text = document.createTextNode( string );
-		pre.appendChild(text);
-		return pre.innerHTML;
-	}
+  escapeHTML = AntiGravity.escapeHTML = function escapeHTML(string){
+    var pre = document.createElement('pre');
+    var text = document.createTextNode( string );
+    pre.appendChild(text);
+    return pre.innerHTML;
+  }
 
 })(this);
