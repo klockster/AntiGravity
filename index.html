@@ -2,8 +2,8 @@
   <div class="sidebar">
     <h1>My Notes</h1>
     Filter by: <select id="search" route='{"change": "/filter"}'>
-    	<option value="title">Note Title</option>
-    	<option value="body">Note Body</option>
+      <option value="title">Note Title</option>
+      <option value="body">Note Body</option>
     </select>
     <input type="text" id="search-input" route='{"keyup": "/filter"}' >
     <br><br>
@@ -15,18 +15,18 @@
 
   <div class="main" id="new">
     <form route='{"submit": "/new_note"}' clear-after="true">
-    	Title: <br><input  class="field" type="text" name="title"><br>
-    	Body: <br><textarea name="body" rows=15 cols=80></textarea><br>
-    	<button>Add Note</button>
+      Title: <br><input  class="field" type="text" name="title"><br>
+      Body: <br><textarea name="body" rows=15 cols=80></textarea><br>
+      <button>Add Note</button>
     </form>
   </div>
 
   <div class="main" id="update">
     <render id="note-body">
       <form route='{"submit": ":id/update_note"}' path-id="{{ id }}">
-      	Title: <br><input  class="field" type="text" name="title" value="{{ title }}"><br>
-      	Body: <br><textarea name="body" rows=15 cols=80>{{ body }}</textarea><br>
-      	<button>Update Note</button>
+        Title: <br><input  class="field" type="text" name="title" value="{{ title }}"><br>
+        Body: <br><textarea name="body" rows=15 cols=80>{{ body }}</textarea><br>
+        <button>Update Note</button>
       </form>
       <button route='{"click": ":id/delete_note"}' path-id="{{ id }}">Delete Note</button>
     </render>
@@ -36,7 +36,7 @@
 
 
 <partial id="note">
-	<h3 route='{"click": ":title/display_body"}' path-title="{{ title }}">{{ title }}</h3>
+  <h3 route='{"click": ":title/display_body"}' path-title="{{ title }}">{{ title }}</h3>
 </partial>
 
 <script>
@@ -46,8 +46,8 @@ var Note = new AntiGravity.Model({
 });
 
 var NotesController = new AntiGravity.Controller({
-	newNote: function(params, event){
-		if (params["title"] && params["body"]){
+  newNote: function(params, event){
+    if (params["title"] && params["body"]){
       Note.singleSave(
         {note: {title: params["title"], body: params["body"]}},
         function(){
@@ -55,30 +55,30 @@ var NotesController = new AntiGravity.Controller({
           NotesView.renderView();
         }
       );
-		}
-	},
-	displayBody: function(params, event){
-		var v2 = new AntiGravity.View({
-			renderId: "note-body"
-		});
-		for (var i = 0; i < Note.pojos.length; i++){
-			if (Note.pojos[i]["title"] == params["title"]){
-				v2.body = Note.pojos[i]["body"];
+    }
+  },
+  displayBody: function(params, event){
+    var v2 = new AntiGravity.View({
+      renderId: "note-body"
+    });
+    for (var i = 0; i < Note.pojos.length; i++){
+      if (Note.pojos[i]["title"] == params["title"]){
+        v2.body = Note.pojos[i]["body"];
         v2.id = Note.pojos[i]["id"];
         v2.title = Note.pojos[i]["title"];
-				break;
-			}
-		}
+        break;
+      }
+    }
 
     document.getElementById("new").style.display="none";
     document.getElementById("update").style.display="block";
-		v2.renderView();
-	},
-	filter: function(params, event){
-		NotesView.filter({notes: Note.pojos}, document.getElementById("search-input").value, document.getElementById("search").value);
-	},
-	updateNote: function(params, event){
-		if (params["title"] && params["body"]){
+    v2.renderView();
+  },
+  filter: function(params, event){
+    NotesView.filter({notes: Note.pojos}, document.getElementById("search-input").value, document.getElementById("search").value);
+  },
+  updateNote: function(params, event){
+    if (params["title"] && params["body"]){
       Note.singleUpdate(
         {note: {title: params["title"], body: params["body"], id: params["id"]}},
         function(){
@@ -86,23 +86,23 @@ var NotesController = new AntiGravity.Controller({
           NotesView.renderView();
         }
       );
-		}
-	},
-	deleteNote: function(params, event){
-		if (params["id"]){
+    }
+  },
+  deleteNote: function(params, event){
+    if (params["id"]){
       Note.singleDestroy(
         {note: {id: params["id"]}},
         function(){
           NotesView.notes = Note.pojos;
           NotesView.renderView();
-      		var v2 = new AntiGravity.View({
-      			renderId: "note-body"
-      		});
+          var v2 = new AntiGravity.View({
+            renderId: "note-body"
+          });
           v2.unrenderView();
         }
       );
-		}
-	},
+    }
+  },
   renderNew: function(params, event){
     document.getElementById("new").style.display="block";
     document.getElementById("update").style.display="none";
@@ -112,13 +112,13 @@ var NotesController = new AntiGravity.Controller({
 var NotesView = new AntiGravity.View({
   notes: Note.pojos,
   renderId: "note-titles",
-	displayNotes: function(){
-		var res = "";
-		for (var i = 0; i < this.notes.length; i++){
-			res += "<li>" + this.renderViewPartial("note",this.notes[i]) + "</li>";
-		}
-		return res;
-	}
+  displayNotes: function(){
+    var res = "";
+    for (var i = 0; i < this.notes.length; i++){
+      res += "<li>" + this.renderViewPartial("note",this.notes[i]) + "</li>";
+    }
+    return res;
+  }
 });
 
 Note.fetchAllWhere({}, NotesView.renderView.bind(NotesView));
