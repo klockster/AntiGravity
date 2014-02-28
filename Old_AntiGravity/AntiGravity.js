@@ -11,21 +11,32 @@
   var activeModels = AntiGravity.activeModels = [];
   var Model = AntiGravity.Model = function Model(object){
     this.pojos = [];//models
+    this.pojoIDs = [];
     this.updated = [];
     var k = Object.keys(object);
     for (var i = 0; i < k.length; i++){
       this[k[i]] = object[k[i]];
     }
-    activeModels.push(this);
+    activeModels.push(this);    
+  };
 
-    this.findWhere = function(obj){
-      for (var i = 0; i < this.pojos.length; i++){
-
+  Model.prototype.findAllWhere = function(obj){
+    var keys = Object.keys(obj);
+    var response = [];
+    for (var i = 0; i < this.pojos.length; i++){
+      var flag = true;
+      for (var j = 0; j < keys.length; j++){
+        if (this.pojos[i][keys[j]] != obj[keys[j]]){
+          flag = false;
+          break;
+        }
+      }
+      if (flag){
+        response.push(this.pojos[i]);
       }
     }
-
-    
-  };
+    return response;
+  }
 
   Model.prototype.urlSubstitute = function(url, obj){
     var arr = path.match(/:(.*?)(\/|$)/g) || [];
@@ -54,6 +65,7 @@
       url: this.singleURL + "qString",
       success: function(resp){
         self.pojos.push(resp)
+        self.pojoIDs.push(resp["id"])
         cb();
       }
     })
@@ -77,6 +89,7 @@
         if (typeof resp == "object"){
           for (var i = 0; i < resp.length; i++){
             self.pojos[self.pojos.length] = resp[i];
+            self.pojoIDs.push(resp[i]["id"]*1)
           }
         }
         // self.pojos += JSON.parse(resp)
@@ -92,7 +105,19 @@
       url: this.postURL ? this.urlSubstitute(this.postURL, pojo) : this.singleURL,
       data: pojo,
       success: function(resp){
-        self.pojos.push(resp)
+        if (!!resp){
+          if (self.pojoIDs.indexOf(resp["id"]*1) >= 0){
+            for (var i = 0; i < self.pojos.length; i++){
+              if (self.pojos[i]["id"]*1 == resp["id"]*1){
+                self.pojos[i] = resp;
+                break;
+              }
+            }
+          } else {
+            self.pojos.push(resp);
+          }
+        }
+        
         cb();
       }
     })
@@ -218,6 +243,31 @@
       var rep = sub.replace(/\s+/g, '');
       var insert = object[rep];
       arr[i] = (typeof insert == "function") ? insert.call(object) : escapeHTML(insert);//calling the function should return stringy code!
+      arr[i] = (arr[i] == "undefined" && typeof this[rep] == "function") ? this[rep](object) : arr[i];
+    }
+    var arr2 = str.replace(/{{(.*?)}}/g,"$#%$#%").split("$#%$#%");
+    var result = "";
+    for (var i = 0; i < arr2.length; i++){
+      result += arr2[i] + (arr[i] || "");
+    }
+    for (var i=0; i < activeRouters.length; i++){
+      activeRouters[i].updateRoutes();
+    }
+
+    result += "";
+    return result;
+  };
+
+  View.prototype.renderPartialNearTarget = function(partialId, object, target){
+    var template = document.getElementById(partialId);
+    var str = template.innerHTML;
+    var arr = str.match(/{{(.*?)}}/g) || [];
+    for (var i = 0; i < arr.length; i++){
+      var sub = arr[i].substring(2,arr[i].length-2);
+      var rep = sub.replace(/\s+/g, '');
+      var insert = object[rep];
+      arr[i] = (typeof insert == "function") ? insert.call(object) : escapeHTML(insert);//calling the function should return stringy code!
+      arr[i] = (arr[i] == "undefined" && typeof this[rep] == "function") ? this[rep](object) : arr[i];
     }
     var arr2 = str.replace(/{{(.*?)}}/g,"$#%$#%").split("$#%$#%");
     var result = "";
@@ -226,7 +276,65 @@
     }
 
     result += "";
-    return result;
+    var parentsChildren = target.parentNode.childNodes;
+    var appendZone = null;
+    for (var i = 0; i < parentsChildren.length; i++){
+      if(parentsChildren[i].tagName && parentsChildren[i].tagName == partialId.toUpperCase()){ 
+        appendZone = parentsChildren[i];
+        break; 
+      }
+    }
+
+    if (appendZone){
+      appendZone.innerHTML = result;
+      for (var i=0; i < activeRouters.length; i++){
+        activeRouters[i].updateRoutes();
+      }
+    }
+  }
+
+  View.prototype.styleTagNearTarget = function(tagName, target, options){
+    var parentsChildren = target.parentNode.childNodes;
+    var newTarget = null;
+    for (var i = 0; i < parentsChildren.length; i++){
+      if(parentsChildren[i].tagName && parentsChildren[i].tagName == tagName.toUpperCase()){ 
+        newTarget = parentsChildren[i];
+        break; 
+      }
+    }
+    if (newTarget){
+      var keys = Object.keys(options);
+      for (var i = 0; i < keys.length; i++){
+        newTarget.style[keys[i]] = options[keys[i]];
+      }
+    }
+    
+  };
+
+  
+  var viewTethers = [];
+
+  var activeMigrations = AntiGravity.activeMigrations = {};
+  View.prototype.styleMigration = function(obj){
+    var keys = Object.keys(obj);
+    for (var i = 0; i < keys.length; i++){
+      if (!activeMigrations[keys[i]]){
+        activeMigrations[keys[i]] = {};
+        var el = obj[keys[i]];
+        var styles = Object.keys(obj[keys[i]])
+        for (var j = 0; j < styles.length; j++){
+          activeMigrations[keys[i]][styles[j]] = el.style[styles[j]];
+          el.style[styles[j]] = obj[keys[i]][styles[j]];//style key = value
+        }
+      } else {
+        var el = activeMigrations[keys[i]];
+        var styles = Object.keys(activeMigrations[keys[i]]) 
+        for (var j = 0; j < styles.length; j++){
+          el.style[styles[j]] = activeMigrations[keys[i]][styles[j]];//style key = value
+        }
+        obj[keys[i]] = null;
+      }
+    }
   };
 
   View.prototype.filter = function(collectionObject, value, attr){
@@ -243,6 +351,8 @@
 
     this.renderView();
   }
+
+  //active attribute toggling among siblings?
 
   var activeRouters = AntiGravity.activeRouters = [];
   var Router = AntiGravity.Router = function Router(object){
@@ -273,6 +383,7 @@
     //loop through all the children, if they have a name set that on params?
     var children = el.children;
     var clear = el.getAttribute("clear-after");
+    var destroy = el.getAttribute("destroy-after");
     for (var i = 0; i < children.length; i++){
       var name = children[i].getAttribute('name');
       if (name){
@@ -328,8 +439,12 @@
           el.value = null;
         }
     }
+    if (destroy){
+      el.parentNode.removeChild(el);
+    }
 
     event.preventDefault();
+    event.stopPropagation();
     this.routes[path](params, event);
   };
 

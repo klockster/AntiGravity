@@ -1,136 +1,392 @@
-<div class="wrapper">
-  <div class="sidebar">
-    <h1>My Notes</h1>
-    Filter by: <select id="search" route='{"change": "/filter"}'>
-      <option value="title">Note Title</option>
-      <option value="body">Note Body</option>
-    </select>
-    <input type="text" id="search-input" route='{"keyup": "/filter"}' >
-    <br><br>
-    <h3 route='{"click": "/render_new"}'>New Note</h3>
-    <render id="note-titles">
-      <ul>{{ displayNotes }}</ul>
-    </render>
-  </div>
-
-  <div class="main" id="new">
-    <form route='{"submit": "/new_note"}' clear-after="true">
-      Title: <br><input  class="field" type="text" name="title"><br>
-      Body: <br><textarea name="body" rows=15 cols=80></textarea><br>
-      <button>Add Note</button>
-    </form>
-  </div>
-
-  <div class="main" id="update">
-    <render id="note-body">
-      <form route='{"submit": ":id/update_note"}' path-id="{{ id }}">
-        Title: <br><input  class="field" type="text" name="title" value="{{ title }}"><br>
-        Body: <br><textarea name="body" rows=15 cols=80>{{ body }}</textarea><br>
-        <button>Update Note</button>
-      </form>
-      <button route='{"click": ":id/delete_note"}' path-id="{{ id }}">Delete Note</button>
-    </render>
-  </div>
+<div class="navwrapper">
+  <render ag-cross="NavBar" class="navbar group">
+    <h1>
+      Tumblrish
+    </h1>
+    {{ displayNavBar }}
+  </render>
 </div>
-
-
-
-<partial id="note">
-  <h3 route='{"click": ":title/display_body"}' path-title="{{ title }}">{{ title }}</h3>
+<partial id="Nav">
+  <li><a href="#" ag-action="click: NavCross.myFeed">Feed</a></li>
+  <li><a href="#" ag-action="click: NavCross.myPosts">My Posts</a></li>  
+  <li><a href="#" ag-action="click: NavCross.newPost">New</a></li>
+  <li><a href="#" ag-action="click: NavCross.about">About</a></li>
 </partial>
 
-<script>
-var Note = new AntiGravity.Model({
-  singleURL: "/note",
-  allURL: "/notes"
-});
+<render ag-cross="PostsView" class="main">
+  <ul>{{ displayPosts }}</ul>
+</render>
 
-var NotesController = new AntiGravity.Controller({
-  newNote: function(params, event){
-    if (params["title"] && params["body"]){
-      Note.singleSave(
-        {note: {title: params["title"], body: params["body"]}},
-        function(){
-          NotesView.notes = Note.pojos;
-          NotesView.renderView();
-        }
-      );
+<partial id="post" class="round">
+  <h3>{{ title }}</h3>
+  
+    <a ag-cross="vote" ag-action="click: VoteCross.upvote" href="#" class="up" ag-if="VoteCross.voted">&#x25B2;</a>
+    <a ag-cross="vote" ag-action="click: VoteCross.downvote" href="#" class="down" ag-if="VoteCross.voted">&#x25BC;</a>
+  
+  <span>{{ vote_tally }} points</span> 
+  <a href="#" ag-cross="showProfile" ag-action="click: ProfileCross.setAndRender">{{ username }}</a>
+  <span ag-cross="time" ag-action="render: PostsView.time">{{ time_ago }}</span> ago.
+
+  <p ag-markup="iframe: //www.youtube.com">{{ body }}</p>
+  <a href="#" ag-action="click: CommentCross.display" ag-cross="dispComments">
+    Display Comments
+  </a>
+  <a ag-cross="replyForm" ag-action="click: CommentCross.newComment" href="#">
+    Reply
+  </a>
+  <a ag-cross="reblog" ag-action="click: ReblogCross.reblog" href="#" ag-if="ReblogCross.reblogged">
+    Reblog
+  </a>
+  <div ag-cross="replyForm"></div>
+  <ul class="comments" style="display:none;" ag-cross="dispComments">
+    {{ displayComments }}
+  </ul>
+</partial>
+
+<partial id="comment">
+  <a ag-cross="expCol" ag-action="click: CommentCross.expCol" href="#" ag-if="CommentCross.checkText" class="exp">+</a>
+  <div class="votewrap">
+    <a ag-cross="vote" ag-action="click: VoteCross.upvote" href="#" class="up" ag-if="VoteCross.voted">&#x25B2;</a>
+    <a ag-cross="vote" ag-action="click: VoteCross.downvote" href="#" class="down" ag-if="VoteCross.voted">&#x25BC;</a>
+  </div>
+  <b>
+    <a href="#" ag-cross="showProfile" ag-action="click: ProfileCross.setAndRender">{{ username }}</a>
+    &nbsp;&nbsp;
+  </b><span>{{ vote_tally }} points</span>
+  <a ag-cross="replyForm" ag-action="click: CommentCross.newComment" href="#">
+    Reply
+  </a>
+  <p>{{ body }}</p>  
+  <div ag-cross="replyForm"></div>
+  <ul ag-cross="expCol" style="display:none;">
+    {{ displayComments }}
+  </ul>
+</partial>
+
+<partial id="reply" ag-action="submit: CommentCross.saveComment" ag-cross="saveComment">
+  <textarea ag-cross="saveComment"></textarea>
+  <input type="submit" value="Save Comment">
+</partial>
+
+<render ag-cross="NewPost" class="newpost">{{ displayNewPostForm }}</render>
+<partial id="newPostForm" class="round">
+  <form ag-action="submit: NewPost.savePost" ag-cross="savePost">
+    <label for="title">Title:</label><br>
+    <input type="text" ag-cross="savePost" id="title"><br>
+    <label for="body">Body:</label><br>
+    <textarea ag-cross="savePost" id="body" placeholder="Supports simple markup and embedded youtube videos"></textarea><br>
+    <input type="submit" value="Save Post">
+  </form>
+  <!-- Put button here to "Discard" post -->
+</partial>
+
+<render id="about">
+  <div class="aboutwrapper round">
+    <h1>Q and A</h1>
+    <h3>What is this site?</h3>
+    <p>This site is a clone of some of the features of sites like Tumblr (with added up/downvoting because why not) using my very own 
+      hand-made MV* JavaScript framework. It is intended for demonstration purposes only.</p>
+    <br>
+    <h3>Did you write all the code?</h3>
+    <p>Yes, with the exception of that which Rails generates I wrote all the front and back code.</p>
+    <br>
+    <h3>Why make your own JavaScript framework to use for this?</h3>
+    <p>As a junior-level developer I thought it would be a great challenge (turns out I was right).  I 
+      managed to implement observable objects that update the DOM when they're changed, a jQuery-like object for easy 
+      DOM manipulation, an interesting way to organize code, conditionals, a simple markup parser and more!  
+      Also I've already used other frameworks and am confident in my abilities with them.</p>
+    <br>
+    <h3>Now what?</h3>
+    <p>Probably something involving JavaScript!</p>
+  </div>
+</render>
+
+<render id="userProfile">{{ displayUserProfile }}</render>
+<partial id="profile">
+  <div class="darkbox" ag-cross="stop" ag-action="click: ProfileCross.stopLook"></div>
+  <div class="lightbox">
+    <h3>{{ username }}</h3>
+    <button ag-cross="follow" ag-action="click: FollowsCross.follow, render: FollowsCross.isFollowed">Follow</button>
+    <p><b>Bio:</b>{{ bio }}</p>
+    <a href="#" ag-cross="showPosts" ag-action="click: ProfileCross.showPosts">Hide latest posts</a>
+    <ul ag-cross="showPosts">{{ displayPosts }}</ul>
+  </div>
+</partial>
+
+<script src="http://www.ryanklock.com/AntiGravityMVX.js"></script>
+<script>
+  /* The front-end code has all been left here (in one file) for your viewing pleasure, enjoy! */
+
+  /* Models */
+
+  var PostsModel = new AntiGravity.Model({
+    singleURL: "/post",
+    allURL: "/posts"
+  });
+  var CommentsModel = new AntiGravity.Model({
+    singleURL: "/comment"
+  });
+  var VotesModel = new AntiGravity.Model({
+    singleURL: "/vote"
+  });
+  var ReblogsModel = new AntiGravity.Model({
+    singleURL: "/reblog"
+  })
+  var FollowsModel = new AntiGravity.Model({
+    singleURL: "/follow"
+  })
+  var UsersModel = new AntiGravity.Model({
+    singleURL: "/user"
+  })
+
+  /* Crosses */
+
+  var PostsView = new AntiGravity.Cross({
+    collection: PostsModel.pojos,
+    displayPosts: function(){          
+      return this.renderPartialForEach("post",this.collection,"li");
+    },
+    displayComments: function(obj){
+      var comments = obj["comments"]//.sort(function(a,b){ return b.vote_tally - a.vote_tally });
+      return this.renderPartialForEach("comment",comments,"li");
+    },
+    time: function(target, pojo){
+      target.textToTime();
     }
-  },
-  displayBody: function(params, event){
-    var v2 = new AntiGravity.View({
-      renderId: "note-body"
-    });
-    for (var i = 0; i < Note.pojos.length; i++){
-      if (Note.pojos[i]["title"] == params["title"]){
-        v2.body = Note.pojos[i]["body"];
-        v2.id = Note.pojos[i]["id"];
-        v2.title = Note.pojos[i]["title"];
-        break;
+  });
+
+  var CommentCross = new AntiGravity.Cross({
+    display: function(target, pojo){
+      target.sibling(true).toggleCSS("display",["none","block"]);
+      target.toggleText(["Hide Comments","Display Comments"]);
+    },
+    expCol: function(target, pojo){
+      target.sibling(true).toggleCSS("display",["none","block"]);
+      target.toggleText(["+","_"]);
+      target.toggleCSS("lineHeight", ["25px", "35px"]);
+      // ax = target;
+    },
+    newComment: function(target, pojo){
+      if (this.lastReplyBox){
+        this.lastReplyBox.empty();
+      }
+      this.lastReplyBox = target.sibling(true);
+      this.renderPartialAtTarget(target.sibling(),"reply",pojo,"form");
+    },
+    saveComment: function(target, pojo){
+      var commentObj = {
+        comment: {
+          body: target.child().value,
+          parent_id: (pojo.post_id) ? pojo.id : null,
+          post_id: (pojo.post_id) ? pojo.post_id : pojo.id
+        }
+      };
+      target.destroy();
+      CommentsModel.singleSave(commentObj, function(resp){
+        PostsModel.findAllWhere({id: resp.id})[0].comments = resp.comments;
+      });
+    },
+    checkText: function(target, pojo){
+      if (pojo["comments"].length == 0){
+        // target.empty();
+        target.transmute("span").toggleHTML(["&nbsp;&nbsp;"], 0);
       }
     }
+  });
 
-    document.getElementById("new").style.display="none";
-    document.getElementById("update").style.display="block";
-    v2.renderView();
-  },
-  filter: function(params, event){
-    NotesView.filter({notes: Note.pojos}, document.getElementById("search-input").value, document.getElementById("search").value);
-  },
-  updateNote: function(params, event){
-    if (params["title"] && params["body"]){
-      Note.singleUpdate(
-        {note: {title: params["title"], body: params["body"], id: params["id"]}},
-        function(){
-          NotesView.notes = Note.pojos;
-          NotesView.renderView();
+  function voteMaker(target, pojo, voteNum) {
+    if (voteNum == -1){
+      target.toggleCSS("color", ["black", "red"]);
+    } else {
+      target.toggleCSS("color", ["black", "green"]);
+    }    
+    target.sibling(true).toggleCSS("color", ["black"], 0);
+    if (pojo["post_id"]){
+      var vote = VotesModel.findAllWhere({voteable_id: pojo.id, voteable_type: "Comment"})[0];
+      var vtype = "Comment";
+    } else {
+      var vote = VotesModel.findAllWhere({voteable_id: pojo.id, voteable_type: "Post"})[0];
+      var vtype = "Post";
+    }
+    var voteMod = {voteable_id: pojo.id, voteable_type: vtype, vote: voteNum};
+    VotesModel.singleSave(voteMod);
+    VotesModel.removeAllWhere({voteable_id: pojo.id, voteable_type: vtype})
+    if (!!vote){
+      if(vote.vote == voteNum){ //clicked a vote that was already there
+        pojo.vote_tally -= voteNum;
+      } else { //clicked the opposite of a vote that was already there
+        VotesModel.pojos.push(voteMod);
+        pojo.vote_tally += voteNum*2;
+      }
+    } else { //clicked a vote when no vote was there
+      VotesModel.pojos.push(voteMod);
+      pojo.vote_tally += voteNum; 
+    }
+  };
+
+  var VoteCross = new AntiGravity.Cross({
+    upvote: function(target, pojo){
+      voteMaker(target, pojo, 1);
+    },
+    downvote: function(target, pojo){
+      voteMaker(target, pojo, -1);
+    },    
+    voted: function(target, pojo){
+      if (pojo["post_id"]){
+        var vote = VotesModel.findAllWhere({voteable_id: pojo.id, voteable_type: "Comment"})[0];
+      } else {
+        var vote = VotesModel.findAllWhere({voteable_id: pojo.id, voteable_type: "Post"})[0];
+      }
+      if (!!vote){
+        var voteNum = (target.class == "up") ? 1 : -1;
+        if (vote.vote == voteNum){
+          if (voteNum == -1){
+            target.toggleCSS("color", ["red"], 0);
+          } else {
+            target.toggleCSS("color", ["green"], 0);
+          }          
+          target.sibling(true).toggleCSS("color", ["black"], 0);
         }
-      );
+      }
     }
-  },
-  deleteNote: function(params, event){
-    if (params["id"]){
-      Note.singleDestroy(
-        {note: {id: params["id"]}},
-        function(){
-          NotesView.notes = Note.pojos;
-          NotesView.renderView();
-          var v2 = new AntiGravity.View({
-            renderId: "note-body"
-          });
-          v2.unrenderView();
+  });
+
+  var ReblogCross = new AntiGravity.Cross({
+    reblog: function(target, pojo){
+      if (!ReblogsModel.findAllWhere({ post_id: pojo.id, user_id: CURRENT_USER_ID }).length){
+        var reblogPojo = { post_id: pojo.id, user_id: CURRENT_USER_ID };
+        ReblogsModel.singleSave(reblogPojo);
+        ReblogsModel.pojos.push(reblogPojo);
+        var rebs = pojo.reblogs; //unfortunately i don't have observable arrays setup, just objects
+        rebs.push(reblogPojo);
+        pojo.reblogs = rebs;
+      }      
+    },
+    reblogged: function(target, pojo){
+      var flag = false; 
+      for (var i = 0; i < pojo.reblogs.length; i++){
+        if (pojo.reblogs[i].user_id == CURRENT_USER_ID){
+          flag = true;
         }
-      );
+      }
+      if (flag){ target.toggleCSS("color",["black", "grey"], 1); target.toggleText(["Reblogged"], 0); }
+      if (pojo.user_id == CURRENT_USER_ID){ target.toggleCSS("display", ["none"], 0) };
     }
-  },
-  renderNew: function(params, event){
-    document.getElementById("new").style.display="block";
-    document.getElementById("update").style.display="none";
-  }
-});
+  });
 
-var NotesView = new AntiGravity.View({
-  notes: Note.pojos,
-  renderId: "note-titles",
-  displayNotes: function(){
-    var res = "";
-    for (var i = 0; i < this.notes.length; i++){
-      res += "<li>" + this.renderViewPartial("note",this.notes[i]) + "</li>";
+  var NavCross = new AntiGravity.Cross({
+    displayNavBar: function(){ return this.renderPartialOnce("Nav", "ul") },
+    myPosts: function(){
+      NavCross.unrenderAll(["NavBar"]);
+      if (!NavCross.mine){
+        PostsModel.fetchAllWhere({}, function(resp){
+          PostsModel.pojos.concat(resp["posts"] || []);
+          NavCross.mine = PostsView.collection = resp["posts"] || [];
+        }, function(){
+          PostsView.renderView.call(PostsView,"PostsView", "ul");
+          }, "/feed");
+      } else {
+        PostsView.collection = NavCross.mine;
+        PostsView.renderView("PostsView");
+      }
+    },
+    myFeed: function(){
+      PostsModel.removeAllWhere({user_id: CURRENT_USER_ID});
+      PostsView.collection = PostsModel.findAllWhere({});
+      NavCross.unrenderAll(["NavBar"]);
+      PostsView.renderView("PostsView");
+    },
+    newPost: function(){
+      NavCross.unrenderAll(["NavBar"]);
+      NewPost.renderView("NewPost");
+    },
+    about: function(){
+      NavCross.unrenderAll(["NavBar"]);
+      NavCross.renderView("about");
     }
-    return res;
-  }
-});
+  });
 
-Note.fetchAllWhere({}, NotesView.renderView.bind(NotesView));
+  var NewPost = new AntiGravity.Cross({
+    savePost: function(target, pojo){
+      var obj = {post: {title: target.child("input").value, body: target.child("textarea").value }}
+      PostsModel.singleSave(obj, function(resp){
+        if (NavCross.mine){ 
+          PostsModel.pojos.push(resp);
+          NavCross.mine.push(resp);
+        }
+      }, function(){
+        NavCross.myPosts();
+      }, "/posts");
+    },
+    displayNewPostForm: function(){
+      return this.renderPartialOnce("newPostForm","div");
+    }
+  })
 
+  var ProfileCross = new AntiGravity.Cross({
+    userId: null,
+    setAndRender: function(target, pojo){
+      ProfileCross.userId = pojo.user_id;
+      if (UsersModel.findAllWhere({id: ProfileCross.userId}).length){
+        this.userObj = UsersModel.findAllWhere({id: ProfileCross.userId})[0];
+        ProfileCross.renderView("userProfile");
+      } else {
+        UsersModel.fetchAllWhere({}, true, ProfileCross.renderView.bind(ProfileCross,"userProfile"), "/user/" + ProfileCross.userId);
+      }  
+      
+    },
+    displayUserProfile: function(){
+      var userObj = UsersModel.findAllWhere({id: ProfileCross.userId})[0];
+      console.log(userObj, ProfileCross.userId);
+      return this.renderPartialOnce("profile", "div", userObj);
+    },
+    displayPosts: function(obj){
+      var posts = obj["posts"]
+      return this.renderPartialForEach("post",posts,"li");
+    },
+    displayComments: function(obj){
+      var comments = obj["comments"]//.sort(function(a,b){ return b.vote_tally - a.vote_tally });
+      return this.renderPartialForEach("comment",comments,"li");
+    },
+    showPosts: function(target, pojo){
+      target.sibling(true).toggleCSS("display",["none","block"]);
+      target.toggleText(["Show latest posts", "Hide latest posts"]);
+    },
+    stopLook: function(target, pojo){
+      this.userId = null;
+      this.unrenderView("userProfile");
+    }
+  })
 
-var NotesRouter = new AntiGravity.Router({
-  "/new_note": NotesController.newNote,
-  ":title/display_body": NotesController.displayBody,
-  "/filter": NotesController.filter,
-  ":id/update_note": NotesController.updateNote,
-  ":id/delete_note": NotesController.deleteNote,
-  "/render_new": NotesController.renderNew
-});
+  var FollowsCross = new AntiGravity.Cross({
+    follow: function(target, pojo){
+      target.toggleText(["Follow","Unfollow"]);
+      if (FollowsModel.findAllWhere({followee_id: pojo.id}).length){
+        var flag = false;
+        FollowsModel.removeAllWhere({followee_id: pojo.id});
+      } else {
+        var flag = true;
+      }
+      FollowsModel.singleSave({followee_id: pojo.id}, flag);
+    },
+    isFollowed: function(target, pojo){
+      if (FollowsModel.findAllWhere({followee_id: pojo.id}).length){
+        target.toggleText(["Follow","Unfollow"], 1);
+      } else if (pojo.id == CURRENT_USER_ID){
+        target.toggleCSS("display", ["none"], 0);
+      }
+    }
+  })
 
+  /* Finally, the setup. For real apps Bootstrapping the data safely would be faster/better than AJAX right away. */
+
+  PostsModel.fetchAllWhere({}, function(resp){
+      PostsView.collection = PostsModel.pojos = resp["posts"] || [];
+      VotesModel.pojos = resp["votes"] || [];
+      ReblogsModel.pojos = resp["reblogs"] || [];
+      FollowsModel.pojos = resp["followee_objects"] || [];
+      CURRENT_USER_ID = (resp && resp["user"]) ? resp["user"]["id"] : null;
+    }, PostsView.renderView.bind(PostsView,"PostsView")
+  );
+  NavCross.renderView("NavBar")
 </script>
