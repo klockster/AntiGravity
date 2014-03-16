@@ -749,6 +749,12 @@
     var tagname = tagname || "";
     var explicitCross = explicitCross || this.collection[0].getAttribute("ag-cross");
     var result = agDOMO(tagname + "." + explicitCross, "ag-cross", ", ", this.collection[0].parentNode);
+    if (result.collection[0] === this.collection[0]){
+      result.collection = [result.collection[1]];
+    } else {
+      result.collection = [result.collection[0]];
+    }
+    return result;
     //now what? siblings are in .parentNode.childNodes is that what they wanted though?
   };
   //maybe this cross finding thing should take like an array []
