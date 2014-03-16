@@ -382,7 +382,52 @@
     for (var i = 0; i < k.length; i++){
       this[k[i]] = object[k[i]];
     }
+    if (this.$routes){
+      this._$routes(this.$routes);
+    }
   };
+
+  var crossRouter = function(){
+    var routeStr = (window.location.hash || window.location.pathname) + "";
+    routeStr = routeStr.substring(1);
+    var routeStrings = Object.keys(routesObject);
+    for (var i = 0; i < routeStrings.length; i++){
+      var kvarr = _routeToRegExpObject(routeStrings[i], routesObject[routeStrings[i]]);
+      var match = routeStr.match(kvarr[0])
+      if (match && match[0] === routeStr){
+        //build params and send them along in callback
+        var params = {};
+        for (var j = 1; j < match.length; j++){
+          params[kvarr[1]["params"][j-1]] = match[j];
+        }
+        kvarr[1]["callback"](params);
+        // if (history.pushState){
+        //   history.pushState();
+        // }          
+      }
+    }      
+  };
+
+  window.addEventListener("hashchange", crossRouter);
+  var routesObject = {};
+
+  Cross.prototype._$routes = function(els){
+    var routeStrings = Object.keys(els);
+    for (var i = 0; i < routeStrings.length; i++){
+      routesObject[routeStrings[i]] = els[routeStrings[i]];
+    }
+  };
+
+  function _routeToRegExpObject(routeStr, cb){
+    var paramVars = routeStr.match(/:[^\/]*/g) || [];
+    for (var i = 0; i < paramVars.length; i++){
+      paramVars[i] = paramVars[i].replace(/:/g,"");
+    }
+    var regStr = routeStr.replace(/:[^\/]*/g, "(.*?)")
+    if (regStr.match(/\(\.\*\?\)$/)){ regStr = regStr + "$"; }
+    var valObj = {params: paramVars, callback: cb}
+    return [new RegExp(regStr), valObj];
+  }
 
   Cross.prototype.renderView = function(renderId, object, elType){
     var elType = elType || "render";
@@ -649,7 +694,7 @@
               for (var j = 0; j < nexts.length; j++){
                 var possibles = Array.prototype.slice.call(nexts[j].getElementsByTagName(arr[i].split(".")[0] || "*"));
                 for (var k = 0; k < possibles.length; k++){ //now see if they have the right class
-                  if (possibles[k].getAttribute && possibles[k].getAttribute(attrType).split(delimeter).indexOf(arr[i].split(".")[1]) >= 0){
+                  if (possibles[k].getAttribute && (possibles[k].getAttribute(attrType) || "").split(delimeter).indexOf(arr[i].split(".")[1]) >= 0){
                     newNexts.push(possibles[k]);
                   }
                 }
