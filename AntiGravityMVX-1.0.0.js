@@ -26,6 +26,11 @@
       return -1;
     };
   }
+  if (!Node.prototype.remove){
+    Node.prototype.remove = function(){
+      this.parentNode.removeChild(this);
+    };
+  }
 
   var activeModels = AntiGravity.activeModels = [];
   var Model = AntiGravity.Model = function Model(object){
