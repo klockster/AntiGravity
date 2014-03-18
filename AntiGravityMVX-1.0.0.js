@@ -2,6 +2,31 @@
   //A framework so light it floats!!
   var AntiGravity = root.AntiGravity = (root.AntiGravity || {});
 
+  if (!Array.prototype.indexOf) {
+    Array.prototype.indexOf = function (searchElement, fromIndex) {
+      if ( this === undefined || this === null ) {
+        throw new TypeError( '"this" is null or not defined' );
+      }
+      var length = this.length >>> 0; // Hack to convert object.length to a UInt32
+      fromIndex = +fromIndex || 0;
+      if (Math.abs(fromIndex) === Infinity) {
+        fromIndex = 0;
+      }
+      if (fromIndex < 0) {
+        fromIndex += length;
+        if (fromIndex < 0) {
+          fromIndex = 0;
+        }
+      }
+      for (;fromIndex < length; fromIndex++) {
+        if (this[fromIndex] === searchElement) {
+          return fromIndex;
+        }
+      }
+      return -1;
+    };
+  }
+
   var activeModels = AntiGravity.activeModels = [];
   var Model = AntiGravity.Model = function Model(object){
     this.pojos = new observableArray([]);//models
@@ -104,7 +129,7 @@
     var self = this;
     $.ajax({
       type: "GET",
-      url: url || this.singleURL,
+      url: url || this.singleURL || cb,
       data: attrs,
       success: function(resp){
         if (parse === true){
@@ -113,8 +138,8 @@
         } else if (typeof parse === "function") {
           parse(resp);
         }
-        if (cb) {
-          cb();
+        if (cb && typeof cb === "function") {
+          cb(resp);
         }
       }
     })
@@ -125,7 +150,7 @@
     var self = this;
     $.ajax({
       type: "GET",
-      url: url || this.allURL,
+      url: url || this.allURL || cb,
       data: attrs,
       success: function(resp){
         if (parse === true){
@@ -138,18 +163,30 @@
         } else if (typeof parse === "function") {
           parse(resp);
         }
-        if (cb){
-          cb();
+        if (cb && typeof cb === "function"){
+          cb(resp);
         }
       }
     })
   };
 
+  function _stripPropertyFromObject(obj){
+    var result = {};
+    var keys = Object.keys(obj);
+    for (var i = 0; i < keys.length; i++){
+      if (keys[i] !== "AntiGravityGS"){
+        result[keys[i]] = obj[keys[i]];
+      }
+    }
+    return result;
+  };
+
   Model.prototype.singleSave = function(pojo, parse, cb, url){
     var self = this;
+    var pojo = _stripPropertyFromObject(pojo);
     $.ajax({
       type:"POST",
-      url: url || this.singleURL,
+      url: url || this.singleURL || cb,
       data: pojo,
       success: function(resp){
         if (!!resp && parse === true){
@@ -168,8 +205,8 @@
           parse(resp);
         }
 
-        if (cb){
-          cb();
+        if (cb && typeof cb === "function"){
+          cb(resp);
         }
       }
     })
@@ -177,9 +214,10 @@
 
   Model.prototype.singleUpdate = function(pojo, parse, cb, url){
     var self = this;
+    var pojo = _stripPropertyFromObject(pojo);
     $.ajax({
       type:"PUT",
-      url: url || this.singleURL,
+      url: url || this.singleURL || cb,
       data: pojo,
       success: function(resp){
         if (!!resp && parse === true){
@@ -193,8 +231,8 @@
           parse(resp);
         }
 
-        if (cb){
-          cb();
+        if (cb && typeof cb === "function"){
+          cb(resp);
         }
       }
     })
@@ -202,9 +240,10 @@
 
   Model.prototype.singleDestroy = function(pojo, parse, cb, url){
     var self = this;
+    var pojo = _stripPropertyFromObject(pojo);
     $.ajax({
       type:"DELETE",
-      url: url || this.singleURL,
+      url: url || this.singleURL || cb,
       data: pojo,
       success: function(resp){
         if (parse === true){
@@ -219,8 +258,8 @@
           parse(resp);
         }
 
-        if (cb){
-          cb();
+        if (cb && typeof cb === "function"){
+          cb(resp);
         }
       }
     })
@@ -301,7 +340,6 @@
       } else if (action === "changed"){//????
 
       } else if (action === "reordered"){//sort
-        
         for (var j = 0; j < refNodes.length; j++){
           for (var k = 0; k < refNodeList[refNodes[j]].length; k++){
             var orderedNodes = [];
@@ -382,12 +420,20 @@
     for (var i = 0; i < k.length; i++){
       this[k[i]] = object[k[i]];
     }
-    if (this.$routes){
-      this._$routes(this.$routes);
-    }
+    // if (this.$routes){
+    //   this._$routes(this.$routes);
+    // }
+    var _routesValue = this.$routes
+    Object.defineProperty(this, "$routes", {
+      get: function(){ return _routesValue },
+      set: function(newVal){
+        _routesValue = newVal;
+        Cross.prototype._$routes(_routesValue);
+      }
+    })
   };
 
-  var crossRouter = function(){
+  Cross.prototype.crossRouter = function(){
     var routeStr = (window.location.hash || window.location.pathname) + "";
     routeStr = routeStr.substring(1);
     var routeStrings = Object.keys(routesObject);
@@ -408,8 +454,9 @@
     }      
   };
 
-  window.addEventListener("hashchange", crossRouter);
+  window.addEventListener("hashchange", Cross.prototype.crossRouter);
   var routesObject = {};
+  var routeUndefined = null;
 
   Cross.prototype._$routes = function(els){
     var routeStrings = Object.keys(els);
@@ -430,6 +477,8 @@
   }
 
   Cross.prototype.renderView = function(renderId, object, elType){
+    var oldRender = agDOMO("." + renderId).collection[0];
+    if (oldRender){ oldRender.remove(); }
     var elType = elType || "render";
     var newEl = document.createElement(elType);
     if (newEl.nodeName === "RENDER"){ newEl.style.display = "block"; }
@@ -438,6 +487,15 @@
     for (var i = 0; i < childNodes.length; i++){
       newEl.appendChild(childNodes[i]);
     }
+    var attrs = renderNode.attributes;
+    for (var i = 0; i < attrs.length; i++){
+      if (attrs[i].nodeName != "id" && attrs[i].nodeName != "style"){
+        newEl.setAttribute(attrs[i].nodeName, attrs[i].nodeValue);
+      }
+    }
+    var anotherClass = renderId;
+    var otherClasses = newEl.getAttribute("class") || "";
+    newEl.setAttribute("class", (otherClasses) ? otherClasses + " " + anotherClass : anotherClass);
     renderNode.parentNode.insertBefore(newEl, renderNode);
     this.recursiveTemplateRender(childNodes, object);
     this.triggerRenderEvents(newEl);
@@ -447,20 +505,34 @@
     var obj = object || window;
     for (var i = 0; i < nodesArr.length; i++){
       if (nodesArr[i].nodeType === Node.TEXT_NODE){
+        var agMarkup = nodesArr[i].parentNode.getAttribute("ag-markup");
+        if (!!agMarkup){
+          var allowences = agMarkup.split(/,\s*/);
+          var agMarkupObj = {};
+          for (var k = 0; k < allowences.length; k++){
+            agMarkupObj[allowences[k].split(/:\s*/)[0]] = allowences[k].split(": ")[1];
+          }
+        }
         var arr = nodesArr[i].textContent.match(/{{.*?}}/g) || [];
         for (var j = 0; j < arr.length; j++){
           var sub = arr[j].substring(2,arr[j].length-2).replace(/\s*/g, '');
-          var kvarr = parseStringToProperty(sub, obj);
+          var kvarr = this.parseStringToProperty(sub, obj);
           var content = kvarr[1];
           if (typeof content === "undefined" && !!this[sub]){
-            var newNodes = this[sub](object);
-          } else {
-            var newNodes = [document.createTextNode(content || "")];
-          }          
-          if (!kvarr[0].AntiGravityGS){
-            kvarr[0].AntiGravityGS = GetSetter(kvarr[0]);
-          } 
-          kvarr[0].AntiGravityGS(newNodes, sub.split(".")[sub.split(".").length - 1]);
+            var newNodes = (typeof this[sub] === "function") ? this[sub](object) : [document.createTextNode(this[sub] || "")];
+          } else { //here is where ag-markup shines!
+            if (agMarkup){
+              var newNodes = parseMarkup((content || ""), agMarkupObj);
+            } else {
+              var newNodes = [document.createTextNode(content || "")];
+            }            
+          }         
+          if (!(content === undefined && !!this[sub])){
+            if (!kvarr[0].AntiGravityGS){
+              kvarr[0].AntiGravityGS = GetSetter(kvarr[0]);
+            }
+            kvarr[0].AntiGravityGS(newNodes, sub.split(".")[sub.split(".").length - 1]);
+          }
           arr[j] = newNodes;
         }
         var arr2 = nodesArr[i].textContent.split(/{{.*?}}/g);
@@ -496,6 +568,31 @@
     this.recursiveTemplateRender(clonedChildren, object);
   };
 
+  Cross.prototype.renderPartialAtTarget = function(target, partialId, object, elType){
+    var template = document.getElementById(partialId) || elementByCross(partialId);
+    var originalChildren = Array.prototype.slice.call(template.childNodes);
+    var clonedChildren = [];
+    var newEl = document.createElement(elType || "div");
+    for (var i = 0; i < originalChildren.length; i++){
+      clonedChildren.push(originalChildren[i].cloneNode(true));
+      newEl.appendChild(clonedChildren[i]);
+    }
+    var attrs = template.attributes;
+    for (var i = 0; i < attrs.length; i++){
+      if (attrs[i].nodeName != "id" && attrs[i].nodeName != "style"){
+        newEl.setAttribute(attrs[i].nodeName, attrs[i].nodeValue);
+      }
+    }
+    var anotherClass = partialId;
+    var otherClasses = newEl.getAttribute("class") || "";
+    newEl.setAttribute("class", (otherClasses) ? otherClasses + " " + anotherClass : anotherClass);
+
+    var parentEl = (target.collection) ? target.collection[0] : target;
+    parentEl.appendChild(newEl);
+    this.recursiveTemplateRender([newEl], object);
+    return agDOMO(newEl);
+  };
+
   Cross.prototype.renderPartialForEach = function(partialId, array, elType){
     if (typeof array !== "function"){
       var array = new observableArray(array);
@@ -512,6 +609,16 @@
         clonedChildren.push(originalChildren[i].cloneNode(true));
         newEl.appendChild(clonedChildren[i]);
       }
+      var attrs = template.attributes;
+      for (var i = 0; i < attrs.length; i++){
+        if (attrs[i].nodeName != "id" && attrs[i].nodeName != "style"){
+          newEl.setAttribute(attrs[i].nodeName, attrs[i].nodeValue);
+        }
+      }
+      var anotherClass = partialId;
+      var otherClasses = newEl.getAttribute("class") || "";
+      newEl.setAttribute("class", (otherClasses) ? otherClasses + " " + anotherClass : anotherClass);
+
       results.push(newEl);
       this.recursiveTemplateRender([newEl], array()[j])
     }
@@ -545,20 +652,24 @@
     var ifSelect = Array.prototype.slice.call(el.querySelectorAll("[ag-if]"));
     var actionables = makeUnique(actionSelect.concat(ifSelect));
     for (var i = 0; i < actionables.length; i++){
-      try{
+      this.triggerRenderEvent(actionables[i]);
+    }
+  };
+
+  Cross.prototype.triggerRenderEvent = function(el){
+    try{
         var renderEvent = new Event('render');
       } catch(e){
         var renderEvent = document.createEvent('Event');
         renderEvent.initEvent('render', true, true);
       }
-      actionables[i].dispatchEvent(renderEvent);
-    }
-  };
+      el.dispatchEvent(renderEvent);
+  }
 
-  //this isn't quite right!!
+  //this isn't quite right!!!!
   Cross.prototype.parseConditions = function(el, obj){
     if (el.getAttribute && el.getAttribute("ag-if")){
-      var cb = parseStringToProperty(el.getAttribute("ag-if"))[1];
+      var cb = this.parseStringToProperty(el.getAttribute("ag-if"))[1];
       cb(agDOMO(el));
     }
   };
@@ -575,6 +686,7 @@
         bubble = bubble.parentNode;
       }
       if (bubble){
+        if (bubble === document){ bubble = event.target }
         var eventTarget = agDOMO(bubble);
         cb.call(this, eventTarget, obj);
       }
@@ -585,7 +697,7 @@
     if (!el.getAttribute){
       return;
     }
-    var actionsList = (el.getAttribute('ag-action') && el.getAttribute('ag-action') != "") ? el.getAttribute('ag-action').split(",") : [];
+    var actionsList = (el.getAttribute('ag-action')) ? el.getAttribute('ag-action').split(", ") : [];
     if (el.getAttribute('ag-if')){
       var str = "render: " + el.getAttribute('ag-if');
       actionsList.push(str);
@@ -594,7 +706,7 @@
       try{
         var funStr = actionsList[j].split(/^.*\:\s*/)[1];
         var eventStr = actionsList[j].split(":")[0].replace(/\s*/g,'');
-        var fun = parseStringToProperty(funStr)[1];
+        var fun = this.parseStringToProperty(funStr)[1];
         el.removeEventListener(eventStr, this.parseAction.bind(this, fun, obj));
         el.addEventListener(eventStr, this.parseAction.bind(this, fun, obj));
       } catch(e){
@@ -603,10 +715,15 @@
     }    
   };
 
-  function parseStringToProperty(str, chain){
+  Cross.prototype.parseStringToProperty = function(str, chain){
     var chain = chain || window;
     var paths = str.split(".");
     var i = 0;
+    if (paths[0] === "$this" || paths[0].toLowerCase() === "$cross"){
+      chain = this;
+      i++;
+    }
+    //we should deal with function calls too, eventually.
     while (chain[paths[i]] && i < paths.length - 2){
       chain = chain[paths[i]];
       i++;
@@ -619,13 +736,11 @@
   function GetSetter(obj){
     var nodeListObj = {};
     var obj = obj;
+    var conditionsNodeListObject = {};
     var _getSetter = function(nodes, property){
       nodeListObj[property] = (nodeListObj[property]) ? nodeListObj[property] : [];
       nodeListObj[property] = nodeListObj[property].concat(nodes);        
-
-      // nodeListObj[property] = (nodeListObj[property]) ? nodeListObj[property].concat(node) : [node];
       var nodeListArray = nodeListObj[property];
-      // nodeListArray.push(node);
       var value = obj[property];
       Object.defineProperty(obj, property, {
         get: function() { return value; },
@@ -634,7 +749,8 @@
             value = newVal;
             for (var i = 0; i < nodeListArray.length; i++){
               nodeListArray[i].textContent = value;
-              Cross.parseConditions(nodeListArray[i].parentNode);
+              Cross.prototype.triggerRenderEvent(nodeListArray[i].parentNode)
+              // Cross.prototype.parseConditions(nodeListArray[i].parentNode);
             }
           };
         })()
@@ -675,11 +791,14 @@
     var attrType = (attrType) ? attrType : "class";
     var delimeter = (delimeter) ? delimeter : " ";
     var node = (node) ? node : document;
+    node = (node.collection) ? node.collection[0] : node;
     this.collection = (function(input){
       if (input.nodeName){
         return [input];
       } else if (input.nextNode){
         return Array.prototype.slice.call(input);
+      } else if (input instanceof Array) {
+        return input;
       } else {
         //refactored this "else" block
         var arr = input.split(" ");
@@ -728,6 +847,133 @@
         return nexts;
       }
     })(input)
+  };
+  DOMObj.prototype.transmute = function(elType){
+    var results = [];
+    for (var j = 0; j < this.collection.length; j++){
+      var el = document.createElement(elType);
+      while (this.collection[j].firstChild){ el.appendChild(this.collection[j].firstChild); }
+      attrs = this.collection[j].attributes;
+      for (var i = 0; i < attrs.length; i++){
+        el.setAttribute(attrs[i].nodeName, attrs[i].nodeValue);
+      }
+      this.collection[j].parentNode.replaceChild(el, this.collection[j]);
+      this.collection[j] = el;
+      results.push(el);
+    }
+    return agDOMO(results);
+  };
+  var _parseToObj = function(array){
+    var a = array.slice(); //shallow copy
+    var result = {};
+    var k = a.shift();
+    if (a.length == 1){
+      result[k] = a[0];
+      return result;
+    }
+    result[k] = _parseToObj(a);
+    return result;
+  }
+  var _parseStringByBrackets = function(string){
+    var results = {}; var holder = {};
+    var inBrackets = string.match(/\[(.*?)\]/g) || [];
+    inBrackets.unshift(string.split(inBrackets[0])[0]);
+    for (var i = 1; i < inBrackets.length; i++){
+      inBrackets[i] = inBrackets[i].substring(1, inBrackets[i].length-1);
+    }
+    return inBrackets;
+  };
+  var _mergeIntoObject = function(outObj, inObj, asArray){
+    //let's assume in object only ever has 1 key, like {users: {name: "Fred"}}
+    var nextKey = Object.keys(inObj)[0];
+    var check = inObj[nextKey];
+    var holder = outObj;
+    while (typeof check === "object"){
+      if (!holder[nextKey]){
+        holder[nextKey] = {};
+      }
+      holder = holder[nextKey];
+      nextKey = Object.keys(check)[0];
+      check = check[nextKey];
+    }
+    if (holder[nextKey] instanceof Array){
+      holder[nextKey].push(check);
+    } else {
+      var insert = (asArray) ? [check] : check;
+      holder[nextKey] = insert;
+    }
+    return outObj;
+  };
+  var _extractDataFromNode = function(node, data, JSONdata){
+    var nameToBrackets = _parseStringByBrackets(node.getAttribute("name"));
+    var value = node[data];
+    var last = nameToBrackets.length - 1;
+    var inObjArr = (!!nameToBrackets[last]) ? nameToBrackets.concat([value]) : nameToBrackets.slice(0, last).concat([value]);
+    var inObj = _parseToObj(inObjArr);
+    _mergeIntoObject(JSONdata, inObj, (nameToBrackets[last] === ""));
+  };
+  DOMObj.prototype.formDataToJSON = function(formNode){
+    var formNode = (formNode && formNode.collection) ? formNode.collection[0] : formNode;
+    var formNode = (formNode) ? formNode : this.collection[0];
+    var JSONdata = {};
+    var namedInputs = agDOMO("input", false, false, formNode).findByAttr("name");
+    for (var i = 0; i < namedInputs.collection.length; i++){
+      var c = namedInputs.collection[i];
+      if (c.getAttribute("type") === "checkbox" || c.getAttribute("type") === "radio"){
+        if (c.checked){
+          _extractDataFromNode(c, "value", JSONdata);
+        }
+      } else {
+        _extractDataFromNode(c, "value", JSONdata);
+      }
+    }
+    //get textareas
+    var namedTextareas = agDOMO("textarea", false, false, formNode).findByAttr("name");
+    for (var i = 0; i < namedTextareas.collection.length; i++){
+      _extractDataFromNode(namedTextareas.collection[i], "value", JSONdata);
+    }
+    //select tag
+    var namedSelects = agDOMO("select", false, false, formNode).findByAttr("name");
+    for (var i = 0; i < namedSelects.collection.length; i++){
+      _extractDataFromNode(namedSelects.collection[i], "value", JSONdata);
+    }
+    return JSONdata;
+  };
+  DOMObj.prototype.value = function(value){
+    if (this.collection.length == 1){
+      if (value){
+        this.collection[0].value = value;
+        return this;
+      } else {
+        return this.collection[0].value;
+      }
+    } else {
+      var results = [];
+      for (var i = 0; i < this.collection.length; i++){
+        if (value){
+          this.collection[i].value = value;
+        } else {
+          results.push(this.collection[i].value);
+        }
+      }
+      if (value){
+        return this;
+      } else {
+        return results;
+      }
+    }
+  };
+  DOMObj.prototype.findByAttribute = DOMObj.prototype.findByAttr = function(attr, value, notEqual){
+    var results = [];
+    for (var i = 0; i < this.collection.length; i++){
+      var c = this.collection[i];
+      if (!value && c.hasAttribute && c.hasAttribute(attr)){
+        results.push(this.collection[i]);
+      } else if ((!c.getAttribute && notEqual) || ((notEqual || c.getAttribute(attr) === value) && (!notEqual || !(c.getAttribute(attr) === value)) )){
+        results.push(this.collection[i]);
+      }
+    }
+    return agDOMO(results);
   };
   DOMObj.prototype.attr = function(name, value){
     if (this.collection.length == 1){
@@ -800,9 +1046,7 @@
       result.collection = [result.collection[0]];
     }
     return result;
-    //now what? siblings are in .parentNode.childNodes is that what they wanted though?
   };
-  //maybe this cross finding thing should take like an array []
 
   var agDOMO = AntiGravity.agDOMO = function(els, attrType, delimeter, node){
     return new DOMObj(els, attrType, delimeter, node);

@@ -402,7 +402,6 @@
         agMarkupObj[allowences[i].split(/:\s*/)[0]] = allowences[i].split(": ")[1];
       }
     }
-    
     var results = [];
     for (var j = 0; j < children.length; j++){
       if (children[j].nodeType == Node.TEXT_NODE){        
