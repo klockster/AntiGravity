@@ -5,7 +5,7 @@ An MV* JavaScript framework that is lite, powerful, and a work in progress.
 The goal is to allow Single Page Apps with expressive and well-organized code adhering to separation of
 concerns.  Tested and working in latests versions of Chrome, Firefox, and IE.
 ## Demo
-Click [here](http://www.ryanklock.com/antigravity.html) to see some demos and features of this framework.
+Click [here](http://www.ryanklock.com/features.html) to see some demos and features of this framework.
 Click [here](http://tumblrish.herokuapp.com/?demo=true) to see a Single Page App built with the framework that clones several features of sites like Tumblr.
 ## How it Works
 This framework was my fun and challenging attempt to replicate what I thought were the most useful features of several popular JS MV* frameworks. 
