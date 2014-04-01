@@ -32,7 +32,6 @@
     };
   }
 
-  var activeModels = AntiGravity.activeModels = [];
   var Model = AntiGravity.Model = function Model(object){
     this.pojos = new observableArray([]);//models
     this.pojoIDs = [];
@@ -40,7 +39,6 @@
     for (var i = 0; i < k.length; i++){
       this[k[i]] = object[k[i]];
     }
-    activeModels.push(this);    
   };
 
   Model.prototype.findAllWhere = function(obj){
@@ -99,17 +97,6 @@
     };
   };
 
-  Model.prototype.urlSubstitute = function(url, obj){
-    var arr = path.match(/:(.*?)(\/|$)/g) || [];
-    for (var i = 0; i < arr.length; i++){
-      var str = arr[i].replace(/[\/:]/g, '');
-      var value = obj[str];
-      url = url.replace(/:(.*?)(\/|$)/, value);
-    }
-
-    return url;
-  };
-
   Model.prototype.parseToPojos = function(pojoOrPojos, propertyParseObject, recurse){
     var remaps = (propertyParseObject) ? Object.keys(propertyParseObject) : [];
     var pojoOrPojos = (pojoOrPojos instanceof Array) ? pojoOrPojos : [pojoOrPojos];
@@ -150,6 +137,7 @@
     })
   };
 
+  //the only jQuery dependencies are these AJAX calls in these models.
   Model.prototype.fetchAllWhere = function(attrs, parse, cb, url){
     var keys = Object.keys(attrs);
     var self = this;
@@ -293,7 +281,6 @@
           get: (function(index){ return function(){ return collection[index] } })(i),
           set: (function(index){
             return function(newVal){
-              console.log(index); //probably closuring wrong i
               this.splice(index, 1, newVal);
             }
           })(i)
@@ -303,10 +290,6 @@
 
     result._defineIndexAccessors();
 
-    //WHAT ABOUT: when the developer does a .remove() on one of my precious array nodes?
-    //OR WHAT ABOUT: when the developer does ANY node-altering function!
-    //Then how you gonna roll??
-    //One thing at a time eh?
     var _multiSibling = function(node, times){
       var sib = node;
       for (var i = 0; i < times; i++){
@@ -337,7 +320,7 @@
         for (var i = 0; i < indexes.length; i++){
           for (var j = 0; j < refNodes.length; j++){
             for (var k = 0; k < refNodeList[refNodes[j]].length; k++){
-              var deletedNode = _multiSibling(refNodeList[refNodes[j]][k], indexes[i] + 1);
+              var deletedNode = _multiSibling(refNodeList[refNodes[j]][k], indexes[i] + 1 - i);
               deletedNode.remove();
             }
           }
@@ -410,9 +393,22 @@
       this.updateNodes(added, "added");
       return collection;
     };
-    result.concat = function(arr){
+    result.concat = function(arr){//destructive!
       this.push.apply(this, arr);
     };
+    result.select = function(cb){ //destructive!
+      var results = [];
+      var indexes = [];
+      for (var i = 0; i < collection.length; i++){
+        if (cb(collection[i])){
+          results.push(collection[i]);
+        } else {
+          indexes.push(i);
+        }
+      }
+      this.updateNodes(indexes, "subtracted");
+      return results;
+    }
     result.indexOf = function(el){
       return collection.indexOf(el);
     };
@@ -425,9 +421,6 @@
     for (var i = 0; i < k.length; i++){
       this[k[i]] = object[k[i]];
     }
-    // if (this.$routes){
-    //   this._$routes(this.$routes);
-    // }
     var _routesValue = this.$routes
     Object.defineProperty(this, "$routes", {
       get: function(){ return _routesValue },
@@ -444,7 +437,7 @@
     var routeStrings = Object.keys(routesObject);
     for (var i = 0; i < routeStrings.length; i++){
       var kvarr = _routeToRegExpObject(routeStrings[i], routesObject[routeStrings[i]]);
-      var match = routeStr.match(kvarr[0])
+      var match = routeStr.match(kvarr[0]);
       if (match && match[0] === routeStr){
         //build params and send them along in callback
         var params = {};
@@ -527,7 +520,8 @@
             var newNodes = (typeof this[sub] === "function") ? this[sub](object) : [document.createTextNode(this[sub] || "")];
           } else { //here is where ag-markup shines!
             if (agMarkup){
-              var newNodes = parseMarkup((content || ""), agMarkupObj);
+              var parseString = escapeHTML(content || "");
+              var newNodes = parseMarkup(parseString, agMarkupObj);
             } else {
               var newNodes = [document.createTextNode(content || "")];
             }            
@@ -600,7 +594,7 @@
 
   Cross.prototype.renderPartialForEach = function(partialId, array, elType){
     if (typeof array !== "function"){
-      var array = new observableArray(array);
+      array = new observableArray(array);
     }
     var template = document.getElementById(partialId) || elementByCross(partialId);
     var refNode = document.createComment("length: " + array().length + ", elType: " + elType);
@@ -674,8 +668,33 @@
   //this isn't quite right!!!!
   Cross.prototype.parseConditions = function(el, obj){
     if (el.getAttribute && el.getAttribute("ag-if")){
-      var cb = this.parseStringToProperty(el.getAttribute("ag-if"))[1];
-      cb(agDOMO(el));
+      var agIf = el.getAttribute("ag-if");
+      var cb = this.parseStringToProperty(agIf.substring(0, agIf.indexOf("(")))[1];
+      if (!obj.AntiGravityGS){
+        obj.AntiGravityGS = GetSetter(obj);
+      }
+      var arr = agIf.match(/\((.*?)\)/) || [];
+      var args = null;
+      if (arr.length){
+        var args = arr[1].split(/,\s*/);
+      } else {
+        return null; //is this what we want to do here?
+      }
+
+      var _getSetterFunction = function(){
+        var newCB = cb;
+        for (var i = 0; i < args.length; i++){
+          newCB = newCB.bind(this, obj[args[i]]);
+        }
+        newCB = newCB.bind(this, agDOMO(el));
+        newCB();
+      };
+
+      for (var i = 0; i < args.length; i++){
+        obj.AntiGravityGS([_getSetterFunction], args[i], true);
+      }
+
+      _getSetterFunction();
     }
   };
 
@@ -703,10 +722,10 @@
       return;
     }
     var actionsList = (el.getAttribute('ag-action')) ? el.getAttribute('ag-action').split(", ") : [];
-    if (el.getAttribute('ag-if')){
-      var str = "render: " + el.getAttribute('ag-if');
-      actionsList.push(str);
-    }
+    // if (el.getAttribute('ag-if')){
+    //   var str = "render: " + el.getAttribute('ag-if').split("(")[0];
+    //   actionsList.push(str);
+    // }
     for (var j = 0; j < actionsList.length; j++){
       try{
         var funStr = actionsList[j].split(/^.*\:\s*/)[1];
@@ -724,11 +743,6 @@
     var chain = chain || window;
     var paths = str.split(".");
     var i = 0;
-    if (paths[0] === "$this" || paths[0].toLowerCase() === "$cross"){
-      chain = this;
-      i++;
-    }
-    //we should deal with function calls too, eventually.
     while (chain[paths[i]] && i < paths.length - 2){
       chain = chain[paths[i]];
       i++;
@@ -742,10 +756,16 @@
     var nodeListObj = {};
     var obj = obj;
     var conditionsNodeListObject = {};
-    var _getSetter = function(nodes, property){
+    var _getSetter = function(nodesOrCallbacks, property, condition){
       nodeListObj[property] = (nodeListObj[property]) ? nodeListObj[property] : [];
-      nodeListObj[property] = nodeListObj[property].concat(nodes);        
+      conditionsNodeListObject[property] = (conditionsNodeListObject[property]) ? conditionsNodeListObject[property] : [];
+      if (!condition){
+        nodeListObj[property] = nodeListObj[property].concat(nodesOrCallbacks); 
+      } else {
+        conditionsNodeListObject[property] = conditionsNodeListObject[property].concat(nodesOrCallbacks);
+      }
       var nodeListArray = nodeListObj[property];
+      var conditionsList = conditionsNodeListObject[property];
       var value = obj[property];
       Object.defineProperty(obj, property, {
         get: function() { return value; },
@@ -753,9 +773,33 @@
           return function(newVal){
             value = newVal;
             for (var i = 0; i < nodeListArray.length; i++){
-              nodeListArray[i].textContent = value;
-              Cross.prototype.triggerRenderEvent(nodeListArray[i].parentNode)
+              if (nodeListArray[i].parentNode && nodeListArray[i].parentNode.hasAttribute("ag-markup")){
+                var parentNode = nodeListArray[i].parentNode;
+                var agMarkup = nodeListArray[i].parentNode.getAttribute("ag-markup");
+                var allowences = agMarkup.split(/,\s*/);
+                var agMarkupObj = {};
+                for (var k = 0; k < allowences.length; k++){
+                  agMarkupObj[allowences[k].split(/:\s*/)[0]] = allowences[k].split(": ")[1];
+                }
+                var parseString = escapeHTML(value || "");
+                var newNodes = parseMarkup(parseString, agMarkupObj);
+                var refNode = document.createComment("length: " + newNodes.length);
+                nodeListArray[i] = refNode;
+                while (parentNode.hasChildNodes()) {
+                  parentNode.removeChild(parentNode.lastChild);
+                }
+                parentNode.appendChild(nodeListArray[i]);
+                for (var k = 0; k < newNodes.length; k++){
+                  parentNode.appendChild(newNodes[k]);
+                }
+              } else {
+                nodeListArray[i].textContent = value;
+              }              
+              Cross.prototype.triggerRenderEvent(nodeListArray[i].parentNode);
               // Cross.prototype.parseConditions(nodeListArray[i].parentNode);
+            }
+            for (var i = 0; i < conditionsList.length; i++){
+              conditionsList[i]();
             }
           };
         })()
@@ -784,7 +828,8 @@
     result = result.replace(closingRegEx, "<\/$1>");
     var dummyEl = document.createElement("div");
     dummyEl.innerHTML = result;
-    return Array.prototype.slice.call(dummyEl.childNodes);
+    var returnVal = Array.prototype.slice.call(dummyEl.childNodes)
+    return (returnVal.length) ? returnVal : [document.createTextNode("")];
   }
 
   function escapeRegExp(str) {
